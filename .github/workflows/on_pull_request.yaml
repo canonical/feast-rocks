@@ -14,5 +14,5 @@ jobs:
     with:
       microk8s-channel: 1.32-strict/stable
       juju-channel: 3.6/stable
-      python-version: "3.9"
+      python-version: "3.10"
       rockcraft-channel: latest/stable
