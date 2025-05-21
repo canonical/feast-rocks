@@ -49,6 +49,9 @@ parts:
       useradd -R $CRAFT_OVERLAY -M -r -u 1001 -g ubuntu ubuntu
     override-prime: |
       craftctl default
+
+      mkdir -p $CRAFT_PRIME/home/ubuntu
+      chown -R 1001:1001 $CRAFT_PRIME/home/ubuntu
       
       # Feast UI attempts to write a file at runtime to this directory:
       # '/lib/python3.10/site-packages/feast/ui/build/projects-list.json'.
