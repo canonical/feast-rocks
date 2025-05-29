@@ -3,9 +3,9 @@ version: "0.49.0"
 summary: Feast UI rock for Feature Store Visualization
 description: |
   This rock provides a containerized environment for running the Feast UI,
-  which offers a web-based interface for exploring and managing data in the Feast feature store.
-  It includes Python dependencies, environment setup, and user permissions required
-  to run the UI securely as a non-root user.
+  a web-based interface for exploring and managing data in the Feast feature store.
+  It includes Python dependencies, environment setup, and non-root user configuration
+  required to run the UI securely and reliably.
 
 license: Apache-2.0
 base: ubuntu@22.04
@@ -16,7 +16,7 @@ services:
   feast-ui:
     override: replace
     summary: "Feast web UI service for managing feature store metadata"
-    command: feast ui
+    command: feast ui --host 0.0.0.0 --port 8888 --root_path /feast
     startup: enabled
     user: ubuntu
     working-dir: /home/ubuntu
@@ -29,32 +29,53 @@ parts:
       (echo "# os-release" && cat /etc/os-release && echo "# dpkg-query" && dpkg-query -f '${db:Status-Abbrev},${binary:Package},${Version},${source:Package},${Source:Version}\n' -W) > ${CRAFT_PART_INSTALL}/usr/share/rocks/dpkg.query
 
   feast-ui:
-    source: .
-    plugin: python
+    source: https://github.com/feast-dev/feast
+    source-type: git
+    source-tag: v0.49.0
+    plugin: nil
     stage-packages:
-    - python3.10
-    - python3.10-venv
-    - tzdata
-    python-requirements:
-    - requirements.txt
-    override-prime: |
-      craftctl default
-  
+      - python3.10
+      - python3.10-venv
+      - tzdata
+    build-snaps:
+      - node/16/stable
+    override-build: |
+      # Install Feast and PostgreSQL extra
+      pip3 install feast==0.49.0
+      pip3 install feast[postgres]==0.49.0
+
+      # Patch the Makefile to set PUBLIC_URL for correct frontend routing
+      sed -i 's|npm run build --omit=dev|PUBLIC_URL=/feast npm run build --omit=dev|' Makefile
+
+      # Build the frontend UI using yarn
+      npm install --global yarn
+      make build-ui
+
+      # Replace the build artifacts inside the Python package
+      rm -rf /usr/local/lib/python3.10/dist-packages/feast/ui/build/
+      cp -r sdk/python/feast/ui/build /usr/local/lib/python3.10/dist-packages/feast/ui/build/
+
+      # Promote Python packages and CLI binaries to the rock install directory
+      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/python3.10/dist-packages
+      mkdir -p $CRAFT_PART_INSTALL/usr/local/bin
+      cp -fr /usr/local/lib/python3.10/dist-packages/* $CRAFT_PART_INSTALL/usr/local/lib/python3.10/dist-packages/
+      cp -fr /usr/local/bin/* $CRAFT_PART_INSTALL/usr/local/bin/
+
+
   non-root-user:
     plugin: nil
     after: [feast-ui]
     overlay-script: |
-      # Create a user in the $CRAFT_OVERLAY chroot
+      # Create non-root user 'ubuntu' with fixed UID/GID inside the overlay
       groupadd -R $CRAFT_OVERLAY -g 1001 ubuntu
       useradd -R $CRAFT_OVERLAY -M -r -u 1001 -g ubuntu ubuntu
     override-prime: |
       craftctl default
 
+      # Create and assign home directory
       mkdir -p $CRAFT_PRIME/home/ubuntu
       chown -R 1001:1001 $CRAFT_PRIME/home/ubuntu
-      
-      # Feast UI attempts to write a file at runtime to this directory:
-      # '/lib/python3.10/site-packages/feast/ui/build/projects-list.json'.
-      # To avoid a PermissionError, we pre-create the directory and give ownership to the 'ubuntu' user.
-      mkdir -p $CRAFT_PRIME/lib/python3.10/site-packages/feast/ui/build
-      chown -R 1001:1001 $CRAFT_PRIME/lib/python3.10/site-packages/feast/ui/build
+
+      # Ensure Feast UI build directory is writable for runtime metadata
+      mkdir -p $CRAFT_PRIME/usr/local/lib/python3.10/dist-packages/feast/ui/build
+      chown -R 1001:1001 $CRAFT_PRIME/usr/local/lib/python3.10/dist-packages/feast/ui/build
