@@ -15,26 +15,7 @@ def test_rock():
     rock_version = check_rock.get_version()
     LOCAL_ROCK_IMAGE = f"{rock_image}:{rock_version}"
 
-    # 1. Check that the feast package is installed
-    result = subprocess.run(
-        [
-            "docker",
-            "run",
-            "--entrypoint",
-            "/bin/bash",
-            LOCAL_ROCK_IMAGE,
-            "-c",
-            "pip list | grep '^feast '"
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        check=True,
-    )
-
-    assert "feast" in result.stdout, "Feast is not installed"
-
-    # 2. Sanity check that the `feast ui --help` command runs successfully
+    # Sanity check that the `feast ui --help` command runs successfully
     result_ui = subprocess.run(
         [
             "docker",
