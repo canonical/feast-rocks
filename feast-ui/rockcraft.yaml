@@ -48,7 +48,7 @@ parts:
       sed -i 's|npm run build --omit=dev|PUBLIC_URL=/feast npm run build --omit=dev|' Makefile
 
       # Build the frontend UI using yarn
-      npm install --global yarn
+      npm install --global yarn@1.22.22
       make build-ui
 
       # Replace the build artifacts inside the Python package
