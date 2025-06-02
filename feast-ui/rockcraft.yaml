@@ -16,6 +16,7 @@ services:
   feast-ui:
     override: replace
     summary: "Feast web UI service for managing feature store metadata"
+    # Keeping the --rooth_path as it is used for registry functionality
     command: feast ui --host 0.0.0.0 --port 8888 --root_path /feast
     startup: enabled
     user: ubuntu
