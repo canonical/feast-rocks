@@ -8,19 +8,18 @@ description: |
   required to run the UI securely and reliably.
 
 license: Apache-2.0
-base: ubuntu@22.04
+base: ubuntu@24.04
 platforms:
   amd64:
+run-user: _daemon_
 
 services:
   feast-ui:
     override: replace
     summary: "Feast web UI service for managing feature store metadata"
-    # Keeping the --rooth_path as it is used for registry functionality
+    # Keeping the --root_path as it is used for registry functionality
     command: feast ui --host 0.0.0.0 --port 8888 --root_path /feast
     startup: enabled
-    user: ubuntu
-    working-dir: /home/ubuntu
 
 parts:
   security-team-requirement:
@@ -35,15 +34,14 @@ parts:
     source-tag: v0.49.0
     plugin: nil
     stage-packages:
-      - python3.10
-      - python3.10-venv
+      - python3.12
+      - python3.12-venv
       - tzdata
     build-snaps:
       - node/16/stable
     override-build: |
-      # Install Feast and PostgreSQL extra
-      pip3 install feast==0.49.0
-      pip3 install feast[postgres]==0.49.0
+      # Install Feast with PostgreSQL support, bypassing PEP 668 restrictions
+      pip3 install --break-system-packages 'feast[postgres]==0.49.0'
 
       # Patch the Makefile to set PUBLIC_URL for correct frontend routing
       sed -i 's|npm run build --omit=dev|PUBLIC_URL=/feast npm run build --omit=dev|' Makefile
@@ -53,30 +51,26 @@ parts:
       make build-ui
 
       # Replace the build artifacts inside the Python package
-      rm -rf /usr/local/lib/python3.10/dist-packages/feast/ui/build/
-      cp -r sdk/python/feast/ui/build /usr/local/lib/python3.10/dist-packages/feast/ui/build/
+      rm -rf /usr/local/lib/python3.12/dist-packages/feast/ui/build/
+      cp -r sdk/python/feast/ui/build /usr/local/lib/python3.12/dist-packages/feast/ui/build/
+
+      # Patch Feast CLI to explicitly use python3.12 interpreter
+      sed -i '1s|.*|#!/usr/bin/python3.12|' /usr/local/bin/feast
 
       # Promote Python packages and CLI binaries to the rock install directory
-      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/python3.10/dist-packages
+      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/python3.12/dist-packages
       mkdir -p $CRAFT_PART_INSTALL/usr/local/bin
-      cp -fr /usr/local/lib/python3.10/dist-packages/* $CRAFT_PART_INSTALL/usr/local/lib/python3.10/dist-packages/
+      cp -fr /usr/local/lib/python3.12/dist-packages/* $CRAFT_PART_INSTALL/usr/local/lib/python3.12/dist-packages/
       cp -fr /usr/local/bin/* $CRAFT_PART_INSTALL/usr/local/bin/
-
 
   non-root-user:
     plugin: nil
     after: [feast-ui]
-    overlay-script: |
-      # Create non-root user 'ubuntu' with fixed UID/GID inside the overlay
-      groupadd -R $CRAFT_OVERLAY -g 1001 ubuntu
-      useradd -R $CRAFT_OVERLAY -M -r -u 1001 -g ubuntu ubuntu
     override-prime: |
       craftctl default
 
-      # Create and assign home directory
-      mkdir -p $CRAFT_PRIME/home/ubuntu
-      chown -R 1001:1001 $CRAFT_PRIME/home/ubuntu
-
       # Ensure Feast UI build directory is writable for runtime metadata
-      mkdir -p $CRAFT_PRIME/usr/local/lib/python3.10/dist-packages/feast/ui/build
-      chown -R 1001:1001 $CRAFT_PRIME/usr/local/lib/python3.10/dist-packages/feast/ui/build
+      mkdir -p $CRAFT_PRIME/usr/local/lib/python3.12/dist-packages/feast/ui/build
+      # Add corect permission to the _daemon_ user 
+      # https://documentation.ubuntu.com/rockcraft/en/latest/reference/rockcraft.yaml/#run-user
+      chown -R 584792:584792 $CRAFT_PRIME/usr/local/lib/python3.12/dist-packages/feast/ui/build
