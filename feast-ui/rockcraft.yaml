@@ -71,4 +71,6 @@ parts:
 
       # Ensure Feast UI build directory is writable for runtime metadata
       mkdir -p $CRAFT_PRIME/usr/local/lib/python3.12/dist-packages/feast/ui/build
+      # Add corect permission to the _daemon_ user 
+      # https://documentation.ubuntu.com/rockcraft/en/latest/reference/rockcraft.yaml/#run-user
       chown -R 584792:584792 $CRAFT_PRIME/usr/local/lib/python3.12/dist-packages/feast/ui/build
