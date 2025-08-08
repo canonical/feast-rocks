@@ -1,0 +1,45 @@
+# Based on https://github.com/feast-dev/feast/blob/v0.49.0/infra/feast-operator/Dockerfile
+name: feast-operator
+summary: Feast Operator
+description: "Feast operator image used in feast controller for CRDs"
+version: "0.49.0"
+license: Apache-2.0
+base: ubuntu@24.04
+platforms:
+    amd64:
+run-user: _daemon_
+
+services:
+  feast-operator:
+    override: replace
+    summary: "Feast operator controller manager service"
+    startup: enabled
+    command: "/manager"
+
+parts:
+  security-team-requirement:
+    plugin: nil
+    override-build: |
+      mkdir -p ${CRAFT_PART_INSTALL}/usr/share/rocks
+      (echo "# os-release" && cat /etc/os-release && echo "# dpkg-query" && dpkg-query -f '${db:Status-Abbrev},${binary:Package},${Version},${source:Package},${Source:Version}\n' -W) > ${CRAFT_PART_INSTALL}/usr/share/rocks/dpkg.query
+
+  controller:
+    plugin: go
+    source: https://github.com/feast-dev/feast
+    source-type: git
+    source-tag: v0.49.0
+    build-snaps:
+      - go/1.23/stable
+    build-environment:
+      - CGO_ENABLED: "0"
+      - GOOS: linux
+      - GOARCH: amd64
+    override-build: |
+      cd infra/feast-operator
+      go mod download
+
+      # Build
+      go build -a -o manager ./cmd/main.go
+
+      # Copy the files to the install directory
+      cp -r manager $CRAFT_PART_INSTALL/manager
