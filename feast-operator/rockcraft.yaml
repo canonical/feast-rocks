@@ -28,18 +28,14 @@ parts:
     source: https://github.com/feast-dev/feast
     source-type: git
     source-tag: v0.49.0
+    source-subdir: infra/feast-operator/cmd
     build-snaps:
       - go/1.23/stable
     build-environment:
       - CGO_ENABLED: "0"
       - GOOS: linux
       - GOARCH: amd64
-    override-build: |
-      cd infra/feast-operator
-      go mod download
-
-      # Build
-      go build -a -o manager ./cmd/main.go
-
-      # Copy the files to the install directory
-      cp -r manager $CRAFT_PART_INSTALL/manager
+    organize:
+      bin/cmd: "/manager"
+    prime:
+      - manager
