@@ -30,7 +30,7 @@ parts:
     source-tag: v0.49.0
     source-subdir: infra/feast-operator/cmd
     build-snaps:
-      - go/1.23/stable
+      - go/1.22/stable
     build-environment:
       - CGO_ENABLED: "0"
       - GOOS: linux
