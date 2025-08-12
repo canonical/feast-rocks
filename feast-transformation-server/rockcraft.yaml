@@ -1,4 +1,4 @@
-# Source: https://github.com/feast-dev/feast/blob/v0.49.0/sdk/python/feast/infra/transformation_servers/Dockerfile
+# Based on https://github.com/feast-dev/feast/blob/v0.49.0/sdk/python/feast/infra/transformation_servers/Dockerfile
 name: feast-transformation-server
 base: ubuntu@24.04
 version: '0.49.0'
