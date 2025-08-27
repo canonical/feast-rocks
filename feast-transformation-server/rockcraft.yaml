@@ -1,0 +1,50 @@
+# Based on https://github.com/feast-dev/feast/blob/v0.49.0/sdk/python/feast/infra/transformation_servers/Dockerfile
+name: feast-transformation-server
+base: ubuntu@24.04
+version: '0.49.0'
+summary: Feast feature transformation server rock
+description: |
+    This rock is responsible for applying feature transformations for Feast at serving time.
+platforms:
+  amd64:
+environment: 
+  # set PYTHONPATH to include packages installed with pip
+  PYTHONPATH: "usr/local/lib/python3.12/site-packages"
+
+services:
+  feast-transformation-server:
+    override: replace
+    summary: "Feast transformation server service"
+    command: python app.py
+    startup: enabled
+
+parts:
+  feast-transformation:
+    plugin: nil
+    source: https://github.com/feast-dev/feast
+    source-type: git
+    source-tag: v0.49.0
+    stage-packages:
+      - python3
+      - python-is-python3
+    build-packages:
+      - python3-pip
+    override-build: |
+
+      # Copy app code
+      cp sdk/python/feast/infra/transformation_servers/app.py $CRAFT_PART_INSTALL/app.py
+
+      # Copy necessary parts of the Feast codebase
+      mkdir -p $CRAFT_PART_INSTALL/sdk
+      cp -r sdk/python $CRAFT_PART_INSTALL/sdk/python
+      cp -r protos $CRAFT_PART_INSTALL/protos
+      cp -r go $CRAFT_PART_INSTALL/go
+      cp setup.py $CRAFT_PART_INSTALL/setup.py
+      cp pyproject.toml $CRAFT_PART_INSTALL/pyproject.toml
+      cp README.md $CRAFT_PART_INSTALL/README.md
+
+      # Install dependencies with pip, including extras for GCP, AWS and grpcio dependencies
+      # Note that upstream is missing grpcio dependency group, this is a bug
+      # filed in https://github.com/feast-dev/feast/issues/5564
+      mkdir -p $CRAFT_PART_INSTALL/usr/local/lib/python3.12/site-packages
+      pip install --target=$CRAFT_PART_INSTALL/usr/local/lib/python3.12/site-packages --no-cache-dir '.[gcp,aws,grpcio]'
