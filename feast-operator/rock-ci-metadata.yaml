@@ -1,6 +1,1 @@
-integrations:
-  - consumer-repository: https://github.com/canonical/feast-operators.git
-   
-    replace-image:
-      - file: charms/feast-ui/metadata.yaml
-        path: resources.oci-image.upstream-source
+integrations: []
